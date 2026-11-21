@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Documentos">
+<meta name="theme-color" content="#1f3a5f">
+<title>Meus Documentos – Validades</title>
+<style>
+  :root{
+    --bg:#f5f3ef; --card:#ffffff; --ink:#1d2430; --muted:#6b7280; --line:#e5e1d8;
+    --brand:#1f3a5f; --brand2:#2c5282;
+    --red:#b42318; --redbg:#fde8e6; --amber:#9a5b00; --amberbg:#fff3d6;
+    --blue:#1d5fa8; --bluebg:#e5f0fb; --green:#1e7a46; --greenbg:#e3f5ea; --gray:#5b6472; --graybg:#eef0f3;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#12161c; --card:#1b2129; --ink:#e8ebef; --muted:#9aa3ae; --line:#2a323d;
+      --brand:#8fb4e3; --brand2:#a9c6ec;
+      --red:#ff8a80; --redbg:#3a1d1b; --amber:#ffc266; --amberbg:#3a2c12; --blue:#8cc0ff; --bluebg:#16283d;
+      --green:#7fd6a2; --greenbg:#15301f; --gray:#b4bcc6; --graybg:#252c35; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.4}
+  header{background:var(--brand);color:#fff;padding:calc(18px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 14px calc(16px + env(safe-area-inset-left))}
+  @media (prefers-color-scheme: dark){ header{background:#1b2a3d} }
+  header h1{margin:0;font-size:1.25rem;letter-spacing:.2px}
+  header p{margin:4px 0 0;opacity:.8;font-size:.85rem}
+  main{max-width:760px;margin:0 auto;padding:14px 14px 100px}
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 8px;text-align:center;cursor:pointer;user-select:none}
+  .stat b{display:block;font-size:1.5rem;font-variant-numeric:tabular-nums}
+  .stat span{font-size:.72rem;color:var(--muted)}
+  .stat.sel{outline:2px solid var(--brand2)}
+  .stat.r b{color:var(--red)} .stat.a b{color:var(--amber)} .stat.b b{color:var(--blue)} .stat.g b{color:var(--green)}
+  .toolbar{display:flex;gap:8px;margin-bottom:12px}
+  .toolbar input,.toolbar select{flex:1;min-width:0}
+  input,select,textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+  textarea{resize:vertical;min-height:70px}
+  label{display:block;font-size:.8rem;color:var(--muted);margin:10px 0 4px}
+  button{font:inherit;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;background:var(--graybg);color:var(--ink)}
+  button.primary{background:var(--brand2);color:#fff}
+  @media (prefers-color-scheme: dark){ button.primary{background:#2c5282} }
+  button.danger{background:var(--redbg);color:var(--red)}
+  .list{display:flex;flex-direction:column;gap:10px}
+  .doc{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--gray);border-radius:12px;padding:12px 14px;cursor:pointer}
+  .doc.r{border-left-color:var(--red)} .doc.a{border-left-color:var(--amber)} .doc.b{border-left-color:var(--blue)} .doc.g{border-left-color:var(--green)}
+  .row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .doc h3{margin:0;font-size:1rem}
+  .meta{font-size:.82rem;color:var(--muted);margin-top:3px}
+  .badge{font-size:.72rem;font-weight:600;padding:4px 8px;border-radius:999px;white-space:nowrap}
+  .badge.r{background:var(--redbg);color:var(--red)} .badge.a{background:var(--amberbg);color:var(--amber)}
+  .badge.b{background:var(--bluebg);color:var(--blue)} .badge.g{background:var(--greenbg);color:var(--green)} .badge.x{background:var(--graybg);color:var(--gray)}
+  .empty{text-align:center;color:var(--muted);padding:40px 10px}
+  .fab{position:fixed;right:calc(18px + env(safe-area-inset-right));bottom:calc(22px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;font-size:1.8rem;line-height:1;background:var(--brand2);color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+  .menu{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:22px}
+  .menu button{font-size:.85rem}
+  dialog{border:0;border-radius:16px;padding:0;width:min(560px,94vw);max-height:92vh;background:var(--card);color:var(--ink)}
+  dialog::backdrop{background:rgba(0,0,0,.45)}
+  .dlg{padding:18px}
+  .dlg h2{margin:0 0 6px;font-size:1.1rem}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+  .actions .spacer{flex:1}
+  .hint{font-size:.78rem;color:var(--muted);margin-top:6px}
+  .toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;font-size:.88rem;opacity:0;transition:opacity .25s;pointer-events:none;z-index:9}
+  .toast.on{opacity:.95}
+  .warn{background:var(--amberbg);color:var(--amber);border-radius:10px;padding:10px 12px;font-size:.82rem;margin-bottom:12px;display:none}
+  .att{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+  .att-item{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+  .att-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.88rem}
+  .att-item .sz{font-size:.72rem;color:var(--muted)}
+  .att-item button{padding:6px 10px;font-size:.8rem}
+  .att-item img{width:36px;height:36px;object-fit:cover;border-radius:6px}
+  .att-ico{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;background:var(--graybg);border-radius:6px}
+  .viewer{display:flex;justify-content:center;align-items:center;background:var(--bg);border-radius:10px;min-height:200px;overflow:auto;max-height:68vh}
+  .viewer img{max-width:100%;max-height:68vh;display:block}
+  .viewer iframe{width:100%;height:68vh;border:0;background:#fff}
+  a.btn{display:inline-block;text-decoration:none;border-radius:10px;padding:10px 14px;background:var(--graybg);color:var(--ink)}
+  @media (max-width:420px){ .grid2{grid-template-columns:1fr} .stat b{font-size:1.25rem} }
+</style>
+</head>
+<body>
+<header>
+  <h1>📁 Meus Documentos</h1>
+  <p>Controle de validades — funciona offline, dados ficam só neste aparelho</p>
+</header>
+
+<main>
+  <div class="warn" id="storageWarn">Não foi possível salvar neste navegador. Os dados serão perdidos ao fechar — use "Backup" para guardá-los.</div>
+
+  <div class="summary">
+    <div class="stat r" data-f="r"><b id="cR">0</b><span>Vencidos</span></div>
+    <div class="stat a" data-f="a"><b id="cA">0</b><span>Até 30 dias</span></div>
+    <div class="stat b" data-f="b"><b id="cB">0</b><span>Até 90 dias</span></div>
+    <div class="stat g" data-f="g"><b id="cG">0</b><span>Em dia</span></div>
+  </div>
+
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Buscar documento ou pessoa…">
+    <select id="person" aria-label="Filtrar por pessoa"></select>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <div class="menu">
+    <button id="btnIcs">📅 Lembretes na agenda</button>
+    <button id="btnBackup">💾 Backup</button>
+    <button id="btnRestore">📥 Restaurar</button>
+  </div>
+</main>
+
+<button class="fab" id="btnAdd" aria-label="Adicionar documento">+</button>
+
+<!-- Formulário -->
+<dialog id="dlgForm">
+  <form class="dlg" id="form">
+    <h2 id="formTitle">Novo documento</h2>
+    <label for="fType">Tipo</label>
+    <select id="fType">
+      <option>RG / Identidade</option><option>CNH</option><option>Passaporte</option><option>Visto</option>
+      <option>CRLV (documento do veículo)</option><option>Seguro do carro</option><option>Seguro de vida / residencial</option>
+      <option>Plano de saúde</option><option>Carteira profissional (OAB, CRM, CREA…)</option><option>Certificado digital</option>
+      <option>Cartão de crédito</option><option>Contrato de aluguel</option><option>Garantia de produto</option>
+      <option>CRAF</option><option>SIMAF</option><option>Guia de Trânsito</option><option>CR</option>
+      <option>Atestado / Exame médico</option><option>Vacina</option><option>Outro</option>
+    </select>
+    <label for="fName">Nome / descrição *</label>
+    <input id="fName" required placeholder="Ex.: CNH do João">
+    <div class="grid2">
+      <div><label for="fPerson">Titular</label><input id="fPerson" list="people" placeholder="Ex.: Eu, Maria…"></div>
+      <div><label for="fNum">Número</label><input id="fNum" placeholder="Opcional"></div>
+      <div><label for="fIssue">Emissão</label><input id="fIssue" class="date" type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" autocomplete="off"></div>
+      <div><label for="fExp">Validade *</label><input id="fExp" class="date" type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" autocomplete="off" required></div>
+    </div>
+    <label for="fRemind">Avisar com antecedência de</label>
+    <select id="fRemind">
+      <option value="15">15 dias</option><option value="30" selected>30 dias</option><option value="60">60 dias</option>
+      <option value="90">90 dias</option><option value="180">6 meses</option>
+    </select>
+    <label for="fNotes">Observações</label>
+    <textarea id="fNotes" placeholder="Onde está guardado, como renovar, links…"></textarea>
+    <label>Anexos (foto ou PDF do documento)</label>
+    <div class="att" id="attList"></div>
+    <button type="button" id="btnAttach">📎 Anexar arquivo / foto</button>
+    <input type="file" id="attFile" multiple accept="image/*,application/pdf" hidden>
+    <datalist id="people"></datalist>
+    <div class="actions">
+      <button type="button" class="danger" id="btnDel" hidden>Excluir</button>
+      <span class="spacer"></span>
+      <button type="button" id="btnCancel">Cancelar</button>
+      <button type="submit" class="primary">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Confirmação -->
+<dialog id="dlgConfirm">
+  <div class="dlg">
+    <h2 id="confTitle">Confirmar</h2>
+    <p id="confText"></p>
+    <div class="actions">
+      <button type="button" id="confNo">Cancelar</button>
+      <button type="button" class="danger" id="confYes">Confirmar</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Backup / Restaurar / ICS -->
+<dialog id="dlgData">
+  <div class="dlg">
+    <h2 id="dataTitle"></h2>
+    <p class="hint" id="dataHint"></p>
+    <textarea id="dataText" rows="8" spellcheck="false"></textarea>
+    <input type="file" id="dataFile" accept=".json,.txt,application/json" hidden>
+    <div class="actions" id="dataActions"></div>
+  </div>
+</dialog>
+
+<!-- Visualizar anexo -->
+<dialog id="dlgView">
+  <div class="dlg">
+    <h2 id="viewTitle"></h2>
+    <div class="viewer" id="viewBody"></div>
+    <div class="actions">
+      <a class="btn" id="viewOpen" target="_blank" rel="noopener">Abrir</a>
+      <a class="btn" id="viewDown">Baixar</a>
+      <button type="button" class="primary" id="viewClose">Fechar</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const KEY = 'docs-validade-v1';
+  let docs = [];
+  let editingId = null;
+  let statusFilter = null;
+  let storageOK = true;
+
+  // ---------- armazenamento ----------
+  function load(){
+    try{ const raw = localStorage.getItem(KEY); docs = raw ? JSON.parse(raw) : []; }
+    catch(e){ storageOK = false; docs = []; }
+    if(!Array.isArray(docs)) docs = [];
+  }
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(docs)); }
+    catch(e){ storageOK = false; }
+    document.getElementById('storageWarn').style.display = storageOK ? 'none' : 'block';
+  }
+
+  // ---------- anexos (IndexedDB) ----------
+  let db = null; const memFiles = new Map();
+  function openDB(){
+    return new Promise(res => {
+      try{
+        const r = indexedDB.open('docs-validade-files', 1);
+        r.onupgradeneeded = () => { const s = r.result.createObjectStore('files', {keyPath:'fid'}); s.createIndex('docId','docId'); };
+        r.onsuccess = () => { db = r.result; res(); };
+        r.onerror = () => res();
+      }catch(e){ res(); }
+    });
+  }
+  function store(mode){ return db.transaction('files', mode).objectStore('files'); }
+  function filesOf(docId){
+    if(!db) return Promise.resolve([...memFiles.values()].filter(f => f.docId === docId));
+    return new Promise(res => { try{ const r = store('readonly').index('docId').getAll(docId); r.onsuccess = () => res(r.result || []); r.onerror = () => res([]); }catch(e){ res([]); } });
+  }
+  function allFiles(){
+    if(!db) return Promise.resolve([...memFiles.values()]);
+    return new Promise(res => { try{ const r = store('readonly').getAll(); r.onsuccess = () => res(r.result || []); r.onerror = () => res([]); }catch(e){ res([]); } });
+  }
+  function putFile(f){
+    if(!db){ memFiles.set(f.fid, f); return Promise.resolve(); }
+    return new Promise((res, rej) => { try{ const r = store('readwrite').put(f); r.onsuccess = () => res(); r.onerror = () => rej(r.error); }catch(e){ rej(e); } });
+  }
+  function delFile(fid){
+    memFiles.delete(fid);
+    if(!db) return Promise.resolve();
+    return new Promise(res => { try{ const r = store('readwrite').delete(fid); r.onsuccess = r.onerror = () => res(); }catch(e){ res(); } });
+  }
+  function fmtSize(b){ return b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(0) + ' KB' : (b/1048576).toFixed(1).replace('.',',') + ' MB'; }
+  function blobToDataURL(b){ return new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(null); r.readAsDataURL(b); }); }
+  function dataURLToBlob(u){
+    const [head, data] = u.split(','); const mime = (head.match(/data:([^;]+)/) || [,'application/octet-stream'])[1];
+    const bin = atob(data); const arr = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], {type: mime});
+  }
+
+  // ---------- datas ----------
+  function today(){ const d = new Date(); d.setHours(0,0,0,0); return d; }
+  function parse(s){ if(!s) return null; const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); }
+  function fmt(s){ const d = parse(s); return d ? d.toLocaleDateString('pt-BR') : '—'; }
+  function daysLeft(s){ return Math.round((parse(s) - today()) / 86400000); }
+  function status(doc){
+    const n = daysLeft(doc.exp);
+    if(n < 0) return 'r';
+    if(n <= 30) return 'a';
+    if(n <= 90) return 'b';
+    return 'g';
+  }
+  function label(doc){
+    const n = daysLeft(doc.exp);
+    if(n < 0) return n === -1 ? 'Venceu ontem' : `Venceu há ${-n} dias`;
+    if(n === 0) return 'Vence hoje';
+    if(n === 1) return 'Vence amanhã';
+    if(n <= 60) return `Faltam ${n} dias`;
+    const m = Math.round(n/30.44);
+    if(m < 24) return `Faltam ${m} meses`;
+    return `Faltam ${(n/365.25).toFixed(1).replace('.',',')} anos`;
+  }
+
+  // ---------- util ----------
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('on'), 2200); }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function confirmBox(title, text, yesLabel){
+    return new Promise(res => {
+      $('confTitle').textContent = title; $('confText').textContent = text; $('confYes').textContent = yesLabel || 'Confirmar';
+      const d = $('dlgConfirm');
+      const done = v => { d.close(); $('confYes').onclick = $('confNo').onclick = null; res(v); };
+      $('confYes').onclick = () => done(true); $('confNo').onclick = () => done(false);
+      d.showModal();
+    });
+  }
+
+  // ---------- render ----------
+  function render(){
+    const counts = {r:0,a:0,b:0,g:0};
+    docs.forEach(d => counts[status(d)]++);
+    $('cR').textContent = counts.r; $('cA').textContent = counts.a; $('cB').textContent = counts.b; $('cG').textContent = counts.g;
+    document.querySelectorAll('.stat').forEach(el => el.classList.toggle('sel', el.dataset.f === statusFilter));
+
+    // pessoas
+    const people = [...new Set(docs.map(d => (d.person||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    const sel = $('person'); const cur = sel.value;
+    sel.innerHTML = '<option value="">Todas as pessoas</option>' + people.map(p => `<option>${esc(p)}</option>`).join('');
+    sel.value = people.includes(cur) ? cur : '';
+    $('people').innerHTML = people.map(p => `<option value="${esc(p)}">`).join('');
+
+    const q = $('q').value.trim().toLowerCase();
+    const pf = sel.value;
+    const list = docs
+      .filter(d => !statusFilter || status(d) === statusFilter)
+      .filter(d => !pf || (d.person||'').trim() === pf)
+      .filter(d => !q || [d.name,d.type,d.person,d.num,d.notes].join(' ').toLowerCase().includes(q))
+      .sort((a,b) => parse(a.exp) - parse(b.exp));
+
+    const el = $('list');
+    if(!docs.length){
+      el.innerHTML = `<div class="empty">Nenhum documento ainda.<br>Toque em <b>+</b> para cadastrar o primeiro.</div>`;
+      return;
+    }
+    if(!list.length){ el.innerHTML = `<div class="empty">Nada encontrado com esse filtro.</div>`; return; }
+    el.innerHTML = list.map(d => {
+      const s = status(d);
+      return `<div class="doc ${s}" data-id="${d.id}" tabindex="0">
+        <div class="row">
+          <div><h3>${esc(d.name)}</h3>
+            <div class="meta">${esc(d.type)}${d.person ? ' · ' + esc(d.person) : ''}${d.num ? ' · nº ' + esc(d.num) : ''}</div>
+            <div class="meta">Validade: <b>${fmt(d.exp)}</b>${d.files ? ` · 📎 ${d.files} anexo${d.files > 1 ? 's' : ''}` : ''}</div>
+          </div>
+          <span class="badge ${s}">${label(d)}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ---------- formulário ----------
+  let att = [], removed = [], formDocId = null;
+  function renderAtt(){
+    const box = $('attList');
+    if(!att.length){ box.innerHTML = '<div class="hint" style="margin:0">Nenhum anexo.</div>'; return; }
+    box.innerHTML = '';
+    att.forEach((f, i) => {
+      const row = document.createElement('div'); row.className = 'att-item';
+      const isImg = (f.type || '').startsWith('image/');
+      let thumb;
+      if(isImg){ thumb = document.createElement('img'); f._url = f._url || URL.createObjectURL(f.blob); thumb.src = f._url; thumb.alt = ''; }
+      else { thumb = document.createElement('div'); thumb.className = 'att-ico'; thumb.textContent = (f.type === 'application/pdf') ? '📄' : '📎'; }
+      const nm = document.createElement('div'); nm.className = 'nm';
+      nm.innerHTML = `${esc(f.name)}<div class="sz">${fmtSize(f.size || 0)}</div>`;
+      const v = document.createElement('button'); v.type = 'button'; v.textContent = 'Ver'; v.onclick = () => openView(f);
+      const x = document.createElement('button'); x.type = 'button'; x.className = 'danger'; x.textContent = '✕'; x.setAttribute('aria-label','Remover anexo');
+      x.onclick = () => { if(!f.isNew) removed.push(f.fid); att.splice(i, 1); renderAtt(); };
+      row.append(thumb, nm, v, x); box.appendChild(row);
+    });
+  }
+  $('btnAttach').onclick = () => $('attFile').click();
+  $('attFile').addEventListener('change', e => {
+    [...e.target.files].forEach(file => {
+      att.push({fid: uid(), docId: formDocId, name: file.name || 'anexo', type: file.type || '', size: file.size, blob: file, added: Date.now(), isNew: true});
+    });
+    e.target.value = ''; renderAtt();
+  });
+
+  // visualizador
+  let viewURL = null;
+  function openView(f){
+    if(viewURL) URL.revokeObjectURL(viewURL);
+    viewURL = URL.createObjectURL(f.blob);
+    $('viewTitle').textContent = f.name;
+    const body = $('viewBody');
+    if((f.type || '').startsWith('image/')) body.innerHTML = `<img src="${viewURL}" alt="">`;
+    else if(f.type === 'application/pdf') body.innerHTML = `<iframe src="${viewURL}" title="PDF"></iframe>`;
+    else body.innerHTML = '<p class="hint">Pré-visualização indisponível. Use "Abrir" ou "Baixar".</p>';
+    $('viewOpen').href = viewURL; $('viewDown').href = viewURL; $('viewDown').download = f.name;
+    $('dlgView').showModal();
+  }
+  $('viewClose').onclick = () => $('dlgView').close();
+  $('dlgView').addEventListener('close', () => { $('viewBody').innerHTML = ''; });
+
+  // datas digitáveis dd/mm/aaaa
+  function isoToBr(s){ if(!s) return ''; const [y,m,d] = s.split('-'); return `${d}/${m}/${y}`; }
+  function brToIso(s){
+    const m = String(s || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(!m) return '';
+    const d = +m[1], mo = +m[2], y = +m[3];
+    const dt = new Date(y, mo - 1, d);
+    if(dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return '';
+    return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  function checkDate(el){
+    const v = el.value.trim();
+    el.setCustomValidity(!v && !el.required ? '' : brToIso(v) ? '' : 'Data inválida. Use dd/mm/aaaa');
+  }
+  document.querySelectorAll('input.date').forEach(el => {
+    el.addEventListener('input', e => {
+      const deleting = e.inputType && e.inputType.startsWith('delete');
+      let dg = el.value.replace(/\D/g, '').slice(0, 8);
+      let out = dg.slice(0, 2);
+      if(dg.length > 2 || (!deleting && dg.length === 2)) out += '/' + dg.slice(2, 4);
+      if(dg.length > 4 || (!deleting && dg.length === 4)) out += '/' + dg.slice(4, 8);
+      el.value = out;
+      el.setCustomValidity('');
+    });
+    el.addEventListener('blur', () => checkDate(el));
+  });
+
+  async function openForm(doc){
+    editingId = doc ? doc.id : null;
+    formDocId = doc ? doc.id : uid();
+    att = doc ? (await filesOf(doc.id)).map(f => ({...f})) : []; removed = [];
+    renderAtt();
+    $('formTitle').textContent = doc ? 'Editar documento' : 'Novo documento';
+    $('fType').value = doc?.type || 'RG / Identidade';
+    $('fName').value = doc?.name || '';
+    $('fPerson').value = doc?.person || '';
+    $('fNum').value = doc?.num || '';
+    $('fIssue').value = isoToBr(doc?.issue);
+    $('fExp').value = isoToBr(doc?.exp);
+    $('fIssue').setCustomValidity(''); $('fExp').setCustomValidity('');
+    $('fRemind').value = String(doc?.remind || 30);
+    $('fNotes').value = doc?.notes || '';
+    $('btnDel').hidden = !doc;
+    $('dlgForm').showModal();
+    if(!doc) setTimeout(()=>$('fName').focus(), 50);
+  }
+  $('fType').addEventListener('change', () => { if(!$('fName').value && $('fType').value !== 'Outro') $('fName').value = $('fType').value; });
+  $('btnAdd').onclick = () => openForm(null);
+  $('btnCancel').onclick = () => $('dlgForm').close();
+  $('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    checkDate($('fIssue')); checkDate($('fExp'));
+    if(!$('form').reportValidity()) return;
+    const data = {
+      type: $('fType').value, name: $('fName').value.trim(), person: $('fPerson').value.trim(),
+      num: $('fNum').value.trim(), issue: brToIso($('fIssue').value), exp: brToIso($('fExp').value),
+      remind: Number($('fRemind').value), notes: $('fNotes').value.trim()
+    };
+    if(!data.name || !data.exp) return;
+    let failed = 0;
+    for(const f of att.filter(f => f.isNew)){
+      try{ await putFile({fid: f.fid, docId: formDocId, name: f.name, type: f.type, size: f.size, blob: f.blob, added: f.added}); f.isNew = false; }
+      catch(err){ failed++; }
+    }
+    for(const fid of removed) await delFile(fid);
+    data.files = att.filter(f => !f.isNew).length;
+    if(editingId){ Object.assign(docs.find(d => d.id === editingId), data); }
+    else docs.push({id: formDocId, ...data});
+    save(); render(); $('dlgForm').close();
+    toast(failed ? `Salvo, mas ${failed} anexo(s) não couberam no armazenamento` : 'Documento salvo');
+  });
+  $('btnDel').onclick = async () => {
+    const id = editingId; const d = docs.find(x => x.id === id); if(!d) return;
+    $('dlgForm').close();
+    if(await confirmBox('Excluir documento', `Excluir "${d.name}" e seus anexos? Isso não pode ser desfeito.`, 'Excluir')){
+      for(const f of await filesOf(id)) await delFile(f.fid);
+      docs = docs.filter(x => x.id !== id); save(); render(); toast('Documento excluído');
+    }
+  };
+  $('list').addEventListener('click', e => { const c = e.target.closest('.doc'); if(c) openForm(docs.find(d => d.id === c.dataset.id)); });
+  $('list').addEventListener('keydown', e => { if(e.key === 'Enter'){ const c = e.target.closest('.doc'); if(c) openForm(docs.find(d => d.id === c.dataset.id)); } });
+
+  document.querySelectorAll('.stat').forEach(el => el.onclick = () => { statusFilter = statusFilter === el.dataset.f ? null : el.dataset.f; render(); });
+  $('q').addEventListener('input', render);
+  $('person').addEventListener('change', render);
+
+  // ---------- backup / restaurar / agenda ----------
+  async function tryDownload(filename, text, mime){
+    // No iPhone (app na tela de início), usar a folha de compartilhamento: "Salvar em Arquivos", AirDrop, e-mail…
+    try{
+      const file = new File([text], filename, {type: mime});
+      if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title: filename}); return; }
+    }catch(e){ if(e && e.name === 'AbortError') return; }
+    try{
+      const blob = new Blob([text], {type: mime});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    }catch(e){}
+  }
+  async function copy(text){
+    try{ await navigator.clipboard.writeText(text); toast('Copiado!'); }
+    catch(e){ $('dataText').select(); toast('Selecione e copie o texto manualmente'); }
+  }
+  function openData(title, hint, text, buttons){
+    $('dataTitle').textContent = title; $('dataHint').textContent = hint; $('dataText').value = text;
+    const box = $('dataActions'); box.innerHTML = '';
+    buttons.forEach(([lbl, cls, fn]) => { const b = document.createElement('button'); b.type='button'; b.textContent = lbl; if(cls) b.className = cls; b.onclick = fn; box.appendChild(b); });
+    $('dlgData').showModal();
+  }
+  const stamp = () => new Date().toISOString().slice(0,10);
+
+  $('btnBackup').onclick = async () => {
+    toast('Preparando backup…');
+    const files = [];
+    for(const f of await allFiles()){
+      const data = await blobToDataURL(f.blob);
+      if(data) files.push({fid: f.fid, docId: f.docId, name: f.name, type: f.type, size: f.size, added: f.added, data});
+    }
+    const text = JSON.stringify({app:'docs-validade', version:2, exported:new Date().toISOString(), docs, files});
+    const total = files.reduce((s, f) => s + (f.size || 0), 0);
+    openData('Backup dos dados',
+      `Inclui ${docs.length} documento(s) e ${files.length} anexo(s) (${fmtSize(total)}). Prefira "Baixar arquivo" e guarde-o em local seguro (nuvem, e-mail para você mesmo). Use "Restaurar" para recuperar.`,
+      text,
+      [['Fechar','',()=>$('dlgData').close()],
+       ['Baixar arquivo','',()=>tryDownload(`backup-documentos-${stamp()}.json`, text, 'application/json')],
+       ['Copiar','primary',()=>copy(text)]]);
+  };
+
+  function doRestore(raw){
+    let parsed;
+    try{ parsed = JSON.parse(raw); }catch(e){ toast('Texto de backup inválido'); return; }
+    const arr = Array.isArray(parsed) ? parsed : parsed.docs;
+    if(!Array.isArray(arr)){ toast('Backup sem documentos'); return; }
+    const clean = arr.filter(d => d && d.name && /^\d{4}-\d{2}-\d{2}$/.test(d.exp)).map(d => ({
+      id: d.id || uid(), type: d.type || 'Outro', name: String(d.name), person: d.person || '', num: d.num || '',
+      issue: d.issue || '', exp: d.exp, remind: Number(d.remind) || 30, notes: d.notes || '', files: 0
+    }));
+    const bfiles = Array.isArray(parsed.files) ? parsed.files.filter(f => f && f.fid && f.docId && typeof f.data === 'string') : [];
+    confirmBox('Restaurar backup', `Encontrados ${clean.length} documento(s) e ${bfiles.length} anexo(s). Mesclar com os atuais ou substituir tudo?`, 'Substituir tudo').then(async replace => {
+      let keep;
+      if(replace){
+        for(const f of await allFiles()) await delFile(f.fid);
+        docs = clean; keep = new Set(clean.map(d => d.id));
+      } else {
+        const ids = new Set(docs.map(d => d.id)); keep = new Set();
+        clean.forEach(d => { if(!ids.has(d.id)){ docs.push(d); keep.add(d.id); } });
+      }
+      let failed = 0;
+      for(const f of bfiles){
+        if(!keep.has(f.docId)) continue;
+        try{ await putFile({fid: f.fid, docId: f.docId, name: f.name, type: f.type, size: f.size, added: f.added, blob: dataURLToBlob(f.data)}); }
+        catch(e){ failed++; }
+      }
+      await recount();
+      save(); render(); $('dlgData').close();
+      toast(failed ? `Restaurado, mas ${failed} anexo(s) falharam` : (replace ? 'Dados substituídos' : 'Backup mesclado'));
+    });
+  }
+  $('btnRestore').onclick = () => {
+    openData('Restaurar backup', 'Cole aqui o texto do backup ou escolha o arquivo .json.', '',
+      [['Cancelar','',()=>$('dlgData').close()],
+       ['Escolher arquivo','',()=>$('dataFile').click()],
+       ['Restaurar','primary',()=>doRestore($('dataText').value)]]);
+  };
+  $('dataFile').addEventListener('change', e => {
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader(); r.onload = () => { $('dataText').value = r.result; doRestore(r.result); }; r.readAsText(f);
+    e.target.value = '';
+  });
+
+  function icsEscape(s){ return String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n'); }
+  function buildICS(){
+    const now = new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+    const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Meus Documentos//Validades//PT-BR','CALSCALE:GREGORIAN'];
+    docs.filter(d => daysLeft(d.exp) >= 0).forEach(d => {
+      const day = d.exp.replace(/-/g,'');
+      const next = new Date(parse(d.exp).getTime() + 86400000);
+      const end = next.getFullYear() + String(next.getMonth()+1).padStart(2,'0') + String(next.getDate()).padStart(2,'0');
+      lines.push('BEGIN:VEVENT', `UID:${d.id}@meus-documentos`, `DTSTAMP:${now}`,
+        `DTSTART;VALUE=DATE:${day}`, `DTEND;VALUE=DATE:${end}`,
+        `SUMMARY:${icsEscape('Vence: ' + d.name + (d.person ? ' (' + d.person + ')' : ''))}`,
+        `DESCRIPTION:${icsEscape((d.type||'') + (d.num ? ' nº ' + d.num : '') + (d.notes ? '\n' + d.notes : ''))}`,
+        'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEscape('Renovar ' + d.name)}`,`TRIGGER:-P${d.remind || 30}D`,'END:VALARM',
+        'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEscape(d.name + ' vence em 7 dias')}`,'TRIGGER:-P7D','END:VALARM',
+        'END:VEVENT');
+    });
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n');
+  }
+  $('btnIcs').onclick = () => {
+    const future = docs.filter(d => daysLeft(d.exp) >= 0).length;
+    if(!future){ toast('Nenhum documento a vencer'); return; }
+    const text = buildICS();
+    openData('Lembretes na agenda',
+      `Gera um arquivo .ics com ${future} evento(s) no dia do vencimento, com alarme na antecedência escolhida e outro 7 dias antes. Abra o arquivo no celular/computador para importar na sua agenda (Google, iPhone, Outlook).`,
+      text,
+      [['Fechar','',()=>$('dlgData').close()],
+       ['Copiar','',()=>copy(text)],
+       ['Baixar .ics','primary',()=>tryDownload(`vencimentos-${stamp()}.ics`, text, 'text/calendar')]]);
+  };
+
+  // fecha diálogos ao tocar fora
+  document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if(e.target === d && d.id !== 'dlgConfirm') d.close(); }));
+
+  async function recount(){
+    const c = {}; (await allFiles()).forEach(f => c[f.docId] = (c[f.docId] || 0) + 1);
+    docs.forEach(d => d.files = c[d.id] || 0);
+  }
+
+  load(); save(); render();
+  try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+  if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} }
+  openDB().then(async () => { await recount(); save(); render(); });
+  // atualiza contagens se a página ficar aberta virando o dia
+  setInterval(render, 60*60*1000);
+})();
+</script>
+</body>
+</html>
