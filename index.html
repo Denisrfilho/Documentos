@@ -37,6 +37,15 @@
   .stat span{font-size:.72rem;color:var(--muted)}
   .stat.sel{outline:2px solid var(--brand2)}
   .stat.r b{color:var(--red)} .stat.a b{color:var(--amber)} .stat.b b{color:var(--blue)} .stat.g b{color:var(--green)}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{white-space:nowrap;border-radius:999px;padding:8px 14px;background:var(--card);border:1px solid var(--line);font-size:.86rem;color:var(--ink);flex:none}
+  .chip.sel{background:var(--brand2);color:#fff;border-color:var(--brand2)}
+  .chip.add{border-style:dashed;color:var(--muted)}
+  .chip small{opacity:.7;margin-left:4px}
+  .frow{display:flex;gap:8px;align-items:center;margin-top:8px}
+  .frow input{flex:1;min-width:0}
+  .frow button{flex:none}
   .toolbar{display:flex;gap:8px;margin-bottom:12px}
   .toolbar input,.toolbar select{flex:1;min-width:0}
   input,select,textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
@@ -93,6 +102,8 @@
 <main>
   <div class="warn" id="storageWarn">Não foi possível salvar neste navegador. Os dados serão perdidos ao fechar — use "Backup" para guardá-los.</div>
 
+  <div class="chips" id="chips"></div>
+
   <div class="summary">
     <div class="stat r" data-f="r"><b id="cR">0</b><span>Vencidos</span></div>
     <div class="stat a" data-f="a"><b id="cA">0</b><span>Até 30 dias</span></div>
@@ -129,6 +140,9 @@
       <option>CRAF</option><option>SIMAF</option><option>Guia de Trânsito</option><option>CR</option>
       <option>Atestado / Exame médico</option><option>Vacina</option><option>Outro</option>
     </select>
+    <label for="fFolder">Pasta</label>
+    <select id="fFolder"></select>
+    <div class="frow" id="fNewFolderRow" hidden><input id="fNewFolder" placeholder="Nome da nova pasta" maxlength="40"></div>
     <label for="fName">Nome / descrição *</label>
     <input id="fName" required placeholder="Ex.: CNH do João">
     <div class="grid2">
@@ -181,6 +195,17 @@
   </div>
 </dialog>
 
+<!-- Pastas -->
+<dialog id="dlgFolders">
+  <div class="dlg">
+    <h2>Pastas</h2>
+    <p class="hint">Crie, renomeie ou apague pastas. Ao apagar uma pasta, os documentos dela vão para "Sem pasta" — nada é perdido.</p>
+    <div class="frow"><input id="newFolder" placeholder="Nova pasta (ex.: Armas, Veículos, Família)" maxlength="40"><button type="button" class="primary" id="btnNewFolder">Criar</button></div>
+    <div id="folderList" style="margin-top:12px"></div>
+    <div class="actions"><button type="button" class="primary" id="btnFoldersClose">Fechar</button></div>
+  </div>
+</dialog>
+
 <!-- Visualizar anexo -->
 <dialog id="dlgView">
   <div class="dlg">
@@ -210,8 +235,24 @@
     catch(e){ storageOK = false; docs = []; }
     if(!Array.isArray(docs)) docs = [];
   }
+  // pastas
+  const FKEY = 'docs-validade-folders-v1';
+  let folders = [];
+  let folderFilter = '';           // '' = todas, NONE = sem pasta, ou nome da pasta
+  const NONE = '__sem_pasta__';
+  function loadFolders(){
+    try{ const raw = localStorage.getItem(FKEY); folders = raw ? JSON.parse(raw) : []; }catch(e){ folders = []; }
+    if(!Array.isArray(folders)) folders = [];
+    syncFolders();
+  }
+  function syncFolders(){
+    const set = new Set(folders.map(f => String(f).trim()).filter(Boolean));
+    docs.forEach(d => { if(d.folder && d.folder.trim()) set.add(d.folder.trim()); });
+    folders = [...set].sort((a,b) => a.localeCompare(b,'pt-BR'));
+  }
   function save(){
-    try{ localStorage.setItem(KEY, JSON.stringify(docs)); }
+    syncFolders();
+    try{ localStorage.setItem(KEY, JSON.stringify(docs)); localStorage.setItem(FKEY, JSON.stringify(folders)); }
     catch(e){ storageOK = false; }
     document.getElementById('storageWarn').style.display = storageOK ? 'none' : 'block';
   }
@@ -294,9 +335,31 @@
   }
 
   // ---------- render ----------
+  const inFolder = d => !folderFilter || (folderFilter === NONE ? !(d.folder||'').trim() : (d.folder||'').trim() === folderFilter);
+  function renderChips(){
+    if(folderFilter && folderFilter !== NONE && !folders.includes(folderFilter)) folderFilter = '';
+    const noneCount = docs.filter(d => !(d.folder||'').trim()).length;
+    if(folderFilter === NONE && !noneCount) folderFilter = '';
+    const items = [['', 'Todas', docs.length]];
+    folders.forEach(f => items.push([f, '📁 ' + f, docs.filter(d => (d.folder||'').trim() === f).length]));
+    if(noneCount && folders.length) items.push([NONE, 'Sem pasta', noneCount]);
+    const box = $('chips'); box.innerHTML = '';
+    items.forEach(([val, lbl, n]) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (folderFilter === val ? ' sel' : '');
+      b.innerHTML = `${esc(lbl)}<small>${n}</small>`;
+      b.onclick = () => { folderFilter = val; render(); };
+      box.appendChild(b);
+    });
+    const add = document.createElement('button'); add.type = 'button'; add.className = 'chip add';
+    add.textContent = folders.length ? '⚙️ Pastas' : '＋ Criar pasta';
+    add.onclick = openFolders; box.appendChild(add);
+    const selChip = box.querySelector('.chip.sel'); if(selChip && selChip.scrollIntoView) try{ selChip.scrollIntoView({block:'nearest', inline:'nearest'}); }catch(e){}
+  }
+
   function render(){
+    renderChips();
     const counts = {r:0,a:0,b:0,g:0};
-    docs.forEach(d => counts[status(d)]++);
+    docs.filter(inFolder).forEach(d => counts[status(d)]++);
     $('cR').textContent = counts.r; $('cA').textContent = counts.a; $('cB').textContent = counts.b; $('cG').textContent = counts.g;
     document.querySelectorAll('.stat').forEach(el => el.classList.toggle('sel', el.dataset.f === statusFilter));
 
@@ -310,9 +373,10 @@
     const q = $('q').value.trim().toLowerCase();
     const pf = sel.value;
     const list = docs
+      .filter(inFolder)
       .filter(d => !statusFilter || status(d) === statusFilter)
       .filter(d => !pf || (d.person||'').trim() === pf)
-      .filter(d => !q || [d.name,d.type,d.person,d.num,d.notes].join(' ').toLowerCase().includes(q))
+      .filter(d => !q || [d.name,d.type,d.person,d.num,d.notes,d.folder].join(' ').toLowerCase().includes(q))
       .sort((a,b) => parse(a.exp) - parse(b.exp));
 
     const el = $('list');
@@ -326,7 +390,7 @@
       return `<div class="doc ${s}" data-id="${d.id}" tabindex="0">
         <div class="row">
           <div><h3>${esc(d.name)}</h3>
-            <div class="meta">${esc(d.type)}${d.person ? ' · ' + esc(d.person) : ''}${d.num ? ' · nº ' + esc(d.num) : ''}</div>
+            <div class="meta">${!folderFilter && d.folder ? '📁 ' + esc(d.folder) + ' · ' : ''}${esc(d.type)}${d.person ? ' · ' + esc(d.person) : ''}${d.num ? ' · nº ' + esc(d.num) : ''}</div>
             <div class="meta">Validade: <b>${fmt(d.exp)}</b>${d.files ? ` · 📎 ${d.files} anexo${d.files > 1 ? 's' : ''}` : ''}</div>
           </div>
           <span class="badge ${s}">${label(d)}</span>
@@ -406,11 +470,75 @@
     el.addEventListener('blur', () => checkDate(el));
   });
 
+  const NEWF = '__nova_pasta__';
+  function fillFolderSelect(selected){
+    const sel = $('fFolder');
+    sel.innerHTML = '<option value="">Sem pasta</option>' + folders.map(f => `<option value="${esc(f)}">📁 ${esc(f)}</option>`).join('') + `<option value="${NEWF}">＋ Nova pasta…</option>`;
+    sel.value = folders.includes(selected) ? selected : '';
+    $('fNewFolderRow').hidden = true; $('fNewFolder').value = '';
+  }
+  $('fFolder').addEventListener('change', () => {
+    const isNew = $('fFolder').value === NEWF;
+    $('fNewFolderRow').hidden = !isNew;
+    if(isNew) setTimeout(() => $('fNewFolder').focus(), 30);
+  });
+
+  // gerenciar pastas
+  function openFolders(){ renderFolderList(); $('newFolder').value = ''; $('dlgFolders').showModal(); }
+  function addFolder(name){
+    name = String(name || '').trim().slice(0, 40);
+    if(!name) return null;
+    const existing = folders.find(f => f.toLowerCase() === name.toLowerCase());
+    if(existing) return existing;
+    folders.push(name); save(); return name;
+  }
+  function renderFolderList(){
+    const box = $('folderList'); box.innerHTML = '';
+    if(!folders.length){ box.innerHTML = '<p class="hint">Nenhuma pasta ainda.</p>'; return; }
+    folders.forEach(f => {
+      const n = docs.filter(d => (d.folder||'').trim() === f).length;
+      const row = document.createElement('div'); row.className = 'frow';
+      const inp = document.createElement('input'); inp.value = f; inp.maxLength = 40; inp.setAttribute('aria-label', 'Nome da pasta');
+      const ok = document.createElement('button'); ok.type = 'button'; ok.textContent = 'Renomear';
+      ok.onclick = () => {
+        const nv = inp.value.trim();
+        if(!nv || nv === f) return;
+        if(folders.some(x => x !== f && x.toLowerCase() === nv.toLowerCase())){ toast('Já existe uma pasta com esse nome'); return; }
+        docs.forEach(d => { if((d.folder||'').trim() === f) d.folder = nv; });
+        folders = folders.map(x => x === f ? nv : x);
+        if(folderFilter === f) folderFilter = nv;
+        save(); render(); renderFolderList(); toast('Pasta renomeada');
+      };
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'danger'; del.textContent = '🗑'; del.setAttribute('aria-label', 'Apagar pasta');
+      del.onclick = async () => {
+        $('dlgFolders').close();
+        const okDel = await confirmBox('Apagar pasta', `Apagar a pasta "${f}"? ${n ? `Os ${n} documento(s) dela vão para "Sem pasta".` : ''}`, 'Apagar');
+        if(okDel){
+          docs.forEach(d => { if((d.folder||'').trim() === f) d.folder = ''; });
+          folders = folders.filter(x => x !== f);
+          if(folderFilter === f) folderFilter = '';
+          save(); render(); toast('Pasta apagada');
+        }
+        openFolders();
+      };
+      const cnt = document.createElement('span'); cnt.className = 'hint'; cnt.style.margin = '0'; cnt.textContent = n;
+      row.append(inp, cnt, ok, del); box.appendChild(row);
+    });
+  }
+  $('btnNewFolder').onclick = () => {
+    const name = addFolder($('newFolder').value);
+    if(!name){ $('newFolder').focus(); return; }
+    $('newFolder').value = ''; folderFilter = name; render(); renderFolderList(); toast('Pasta criada');
+  };
+  $('newFolder').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('btnNewFolder').click(); } });
+  $('btnFoldersClose').onclick = () => $('dlgFolders').close();
+
   async function openForm(doc){
     editingId = doc ? doc.id : null;
     formDocId = doc ? doc.id : uid();
     att = doc ? (await filesOf(doc.id)).map(f => ({...f})) : []; removed = [];
     renderAtt();
+    fillFolderSelect(doc ? (doc.folder || '') : (folderFilter && folderFilter !== NONE ? folderFilter : ''));
     $('formTitle').textContent = doc ? 'Editar documento' : 'Novo documento';
     $('fType').value = doc?.type || 'RG / Identidade';
     $('fName').value = doc?.name || '';
@@ -438,6 +566,11 @@
       remind: Number($('fRemind').value), notes: $('fNotes').value.trim()
     };
     if(!data.name || !data.exp) return;
+    if($('fFolder').value === NEWF){
+      const nf = addFolder($('fNewFolder').value);
+      if(!nf){ toast('Digite o nome da nova pasta'); $('fNewFolder').focus(); return; }
+      data.folder = nf;
+    } else data.folder = $('fFolder').value;
     let failed = 0;
     for(const f of att.filter(f => f.isNew)){
       try{ await putFile({fid: f.fid, docId: formDocId, name: f.name, type: f.type, size: f.size, blob: f.blob, added: f.added}); f.isNew = false; }
@@ -499,7 +632,7 @@
       const data = await blobToDataURL(f.blob);
       if(data) files.push({fid: f.fid, docId: f.docId, name: f.name, type: f.type, size: f.size, added: f.added, data});
     }
-    const text = JSON.stringify({app:'docs-validade', version:2, exported:new Date().toISOString(), docs, files});
+    const text = JSON.stringify({app:'docs-validade', version:3, exported:new Date().toISOString(), docs, folders, files});
     const total = files.reduce((s, f) => s + (f.size || 0), 0);
     openData('Backup dos dados',
       `Inclui ${docs.length} documento(s) e ${files.length} anexo(s) (${fmtSize(total)}). Prefira "Baixar arquivo" e guarde-o em local seguro (nuvem, e-mail para você mesmo). Use "Restaurar" para recuperar.`,
@@ -516,18 +649,20 @@
     if(!Array.isArray(arr)){ toast('Backup sem documentos'); return; }
     const clean = arr.filter(d => d && d.name && /^\d{4}-\d{2}-\d{2}$/.test(d.exp)).map(d => ({
       id: d.id || uid(), type: d.type || 'Outro', name: String(d.name), person: d.person || '', num: d.num || '',
-      issue: d.issue || '', exp: d.exp, remind: Number(d.remind) || 30, notes: d.notes || '', files: 0
+      issue: d.issue || '', exp: d.exp, remind: Number(d.remind) || 30, notes: d.notes || '', folder: String(d.folder || '').trim(), files: 0
     }));
     const bfiles = Array.isArray(parsed.files) ? parsed.files.filter(f => f && f.fid && f.docId && typeof f.data === 'string') : [];
     confirmBox('Restaurar backup', `Encontrados ${clean.length} documento(s) e ${bfiles.length} anexo(s). Mesclar com os atuais ou substituir tudo?`, 'Substituir tudo').then(async replace => {
       let keep;
       if(replace){
         for(const f of await allFiles()) await delFile(f.fid);
-        docs = clean; keep = new Set(clean.map(d => d.id));
+        docs = clean; keep = new Set(clean.map(d => d.id)); folders = [];
       } else {
         const ids = new Set(docs.map(d => d.id)); keep = new Set();
         clean.forEach(d => { if(!ids.has(d.id)){ docs.push(d); keep.add(d.id); } });
       }
+      if(Array.isArray(parsed.folders)) parsed.folders.forEach(f => { if(typeof f === 'string' && f.trim()) folders.push(f.trim().slice(0,40)); });
+      folderFilter = '';
       let failed = 0;
       for(const f of bfiles){
         if(!keep.has(f.docId)) continue;
@@ -590,7 +725,7 @@
     docs.forEach(d => d.files = c[d.id] || 0);
   }
 
-  load(); save(); render();
+  load(); loadFolders(); save(); render();
   try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
   if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} }
   openDB().then(async () => { await recount(); save(); render(); });
